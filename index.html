@@ -1,0 +1,300 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MaxDisplay by Arroy</title>
+
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#d71920">
+
+<style>
+body{
+margin:0;
+font-family:Arial,sans-serif;
+background:#eef2f7;
+display:flex;
+justify-content:center;
+align-items:center;
+min-height:100vh;
+padding:15px;
+}
+
+.container{
+background:white;
+width:100%;
+max-width:430px;
+border-radius:30px;
+overflow:hidden;
+box-shadow:0 10px 30px rgba(0,0,0,0.2);
+}
+
+.header{
+background:#d71920;
+padding:25px;
+text-align:center;
+color:white;
+}
+
+.logo{
+font-size:32px;
+font-weight:bold;
+}
+
+.sub{
+margin-top:8px;
+font-size:15px;
+}
+
+.yellow{
+height:10px;
+background:#ffd400;
+}
+
+.blue{
+height:10px;
+background:#0057b8;
+}
+
+.content{
+padding:25px;
+}
+
+input{
+width:100%;
+padding:18px;
+font-size:22px;
+border-radius:18px;
+border:2px solid #d1d5db;
+box-sizing:border-box;
+}
+
+.timerbox{
+margin-top:20px;
+background:#111827;
+border-radius:25px;
+padding:30px;
+text-align:center;
+color:#4ade80;
+}
+
+.timer{
+font-size:70px;
+font-weight:bold;
+}
+
+.buttons{
+display:grid;
+grid-template-columns:1fr 1fr;
+gap:10px;
+margin-top:20px;
+}
+
+button{
+padding:18px;
+border:none;
+border-radius:18px;
+font-size:17px;
+font-weight:bold;
+color:white;
+}
+
+.start{background:#16a34a;}
+.reset{background:#dc2626;}
+.pause{background:#f59e0b;}
+.install{background:#2563eb;margin-top:15px;width:100%;}
+
+.alert{
+display:none;
+margin-top:20px;
+background:#dc2626;
+color:white;
+padding:18px;
+border-radius:18px;
+text-align:center;
+font-weight:bold;
+animation:blink 1s infinite;
+}
+
+@keyframes blink{
+0%{opacity:1;}
+50%{opacity:0.4;}
+100%{opacity:1;}
+}
+
+.info{
+margin-top:20px;
+background:#fef3c7;
+padding:18px;
+border-radius:18px;
+font-size:14px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<div class="header">
+<div class="logo">MAXDISPLAY</div>
+<div class="sub">by Arroy</div>
+</div>
+
+<div class="yellow"></div>
+<div class="blue"></div>
+
+<div class="content">
+
+<input type="number" id="item" placeholder="Masukkan jumlah item">
+
+<div class="timerbox">
+<div>WAKTU MUNDUR</div>
+<div class="timer" id="timer">00:00</div>
+</div>
+
+<div class="buttons">
+<button class="start" onclick="startTimer()">MULAI</button>
+<button class="reset" onclick="resetTimer()">RESET</button>
+<button class="pause" onclick="pauseTimer()">PAUSE</button>
+<button class="pause" onclick="stopAlarm()">STOP ALARM</button>
+</div>
+
+<button class="install" id="installBtn">TAMBAHKAN KE HALAMAN UTAMA</button>
+
+<div class="alert" id="alertBox">
+SIRENE MAX DISPLAY AKTIF!
+</div>
+
+<div class="info">
+<b>Fitur:</b><br>
+• Alarm Sirine<br>
+• Getar Otomatis<br>
+• Fullscreen Mode<br>
+• Install ke Android<br>
+• Countdown Otomatis<br><br>
+
+<b>Rumus:</b><br>
+Jumlah Item ÷ 13 = Menit
+</div>
+
+</div>
+</div>
+
+<script>
+let timerInterval;
+let sirenInterval;
+let remaining = 0;
+let initial = 0;
+let deferredPrompt;
+
+window.addEventListener('beforeinstallprompt', (e)=>{
+e.preventDefault();
+deferredPrompt=e;
+});
+
+document.getElementById('installBtn').addEventListener('click', async ()=>{
+if(deferredPrompt){
+deferredPrompt.prompt();
+}else{
+alert('Chrome Android: tekan titik 3 lalu Tambahkan ke layar utama');
+}
+});
+
+function format(sec){
+let m=Math.floor(sec/60);
+let s=sec%60;
+return String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+}
+
+function update(){
+document.getElementById('timer').innerText=format(remaining);
+}
+
+function siren(){
+const ctx = new(window.AudioContext||window.webkitAudioContext)();
+
+const osc = ctx.createOscillator();
+const gain = ctx.createGain();
+
+osc.connect(gain);
+gain.connect(ctx.destination);
+
+osc.type='sawtooth';
+osc.frequency.setValueAtTime(700,ctx.currentTime);
+osc.frequency.linearRampToValueAtTime(1200,ctx.currentTime+0.5);
+
+gain.gain.value=0.4;
+
+osc.start();
+
+setTimeout(()=>{
+osc.stop();
+},700);
+}
+
+function startTimer(){
+
+stopAlarm();
+
+const item=parseInt(document.getElementById('item').value);
+
+if(!item || item<=0){
+alert('Masukkan jumlah item');
+return;
+}
+
+remaining=Math.ceil((item/13)*60);
+initial=remaining;
+
+update();
+
+clearInterval(timerInterval);
+
+timerInterval=setInterval(()=>{
+
+remaining--;
+update();
+
+if(remaining<=0){
+
+clearInterval(timerInterval);
+
+document.getElementById('alertBox').style.display='block';
+
+if(navigator.vibrate){
+navigator.vibrate([500,500,500,500,500]);
+}
+
+siren();
+
+sirenInterval=setInterval(()=>{
+siren();
+},1200);
+
+alert('Waktu Max Display selesai!');
+}
+
+},1000);
+}
+
+function resetTimer(){
+clearInterval(timerInterval);
+remaining=initial;
+update();
+stopAlarm();
+}
+
+function pauseTimer(){
+clearInterval(timerInterval);
+}
+
+function stopAlarm(){
+clearInterval(sirenInterval);
+document.getElementById('alertBox').style.display='none';
+}
+</script>
+
+</body>
+</html>
